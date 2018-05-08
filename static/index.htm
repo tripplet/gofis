@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared</title>
+    <link rel="icon" type="image/png" href="static/favicon.png">
+    <link rel="stylesheet" href="static/pure-min.css">
+    <style>
+        .content {
+            margin: 0 auto;
+            padding: 0 2em;
+            max-width: 95%;
+            margin-bottom: 50px;
+            line-height: 1.6em;
+        }
+
+        .header {
+            margin: 0 auto;
+            max-width: 95%;
+            color: #333;
+            text-align: center;
+            padding: 0.5em 2em 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .header h1 {
+            margin: 0.2em 0;
+            font-size: 3em;
+            font-weight: 300;
+        }
+
+        .header h2 {
+            font-weight: 300;
+            color: #ccc;
+            padding: 0;
+            margin-top: 0;
+        }
+
+        .stretch {
+            width: 100%;
+        }
+
+        .icon svg,
+        .icon img {
+            height: 1em;
+            width: 1em;
+            fill: currentColor;
+        }
+
+        .icon.baseline svg,
+        .icon img {
+            top: .15em;
+            margin-right: 0.1em; 
+            position: relative;
+        }
+
+        .button-upload {
+            color: white;
+            border-radius: 4px;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+            background: rgb(28, 184, 65);
+        }
+        
+        .button-blue {
+            background: rgb(28, 65, 184);
+        }
+    </style>
+    <script>
+        var path = '{{.DirectoryPath}}';
+
+        function upload(input) {
+            var formData  = new FormData();
+            let progress = document.getElementById('upload-progress');
+            for (let idx = 0; idx < input.files.length; idx++) {
+                formData.append('file' + idx, input.files.item(idx));
+            }
+
+            formData.append('path', path);
+
+            let client = new XMLHttpRequest();
+            client.onerror = function(e) { alert('Error during upload: ' + e); };
+            client.upload.onprogress = function(e) {
+                var p = Math.round(100 / e.total * e.loaded);
+                progress.style.display = "block";
+                progress.value = p;
+            };
+            client.open("POST", "/upload");
+            client.send(formData);
+            client.onreadystatechange = function() {
+                if (client.readyState == 4) {
+                    if (client.status == 200) {
+                        location.reload();
+                    }
+                    else {
+                        alert('Error during upload: ' + client.responseText);
+                    }
+                }
+            };
+        }
+
+        function newfolder() {
+            var foldername = window.prompt('Name of new folder', 'New Folder');
+            if (foldername == null || foldername == "") {
+                return;
+            }
+
+            var data = new FormData();
+            data.append("foldername", foldername);
+            data.append("path", path);
+
+            fetch('/newfolder', {
+                method: 'POST',
+                body: data
+            }).then(function(res) {
+                if (res.status == 200) {
+                    location.reload();
+                }
+                else {
+                    alert('Error creating folder: ' + res.body);
+                }
+            }).catch(function(e) {
+                alert('Error creating folder: ' + e);
+            });
+        }
+
+        var url = new URL('/ws', window.location.href);
+        url.protocol = 'ws';
+        var ws = new WebSocket(url.href);
+
+        // Log errors
+        ws.onerror = function (error) {
+            console.log('WebSocket Error: ' + error);
+        };
+
+        // Log messages from the server
+        ws.onmessage = function (evt) {
+            console.log('Server: ' + evt.data);
+            document.getElementById('events').insertAdjacentHTML('beforeend', '<pre>' + evt.data + '</pre><br/>')
+        };
+
+        ws.onclose = function (evt) {
+            console.log('WebSocket closed');
+        };
+    </script>
+</head>
+
+<body>
+    <div id="layout">
+        <div id="main">
+            <div class="header">
+                <h1>{{.DirectoryName}}</h1>
+                {{if .IsNotTopMost}}
+                <h2>
+                    <i class="icon baseline">
+                        <a href="/?p={{.ParentDir}}">
+                            <svg fill="#000000" height="48" viewBox="0 0 24 24" width="48" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+                                <path d="M0 0h24v24H0z " fill="none" />
+                            </svg>
+                        </a>
+                    </i>{{.DirectoryPath}}
+                </h2>
+                {{end}}
+                <h3 align="left">
+                    <button class="button-upload pure-button" onclick="document.getElementById('files').click()">
+                        <i class="icon baseline">
+                            <svg fill="#000000" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 0h24v24H0z " fill="none" />
+                                <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
+                            </svg>
+                        </i>
+                        Upload file(s)
+                    </button>
+                    <button class="button-upload pure-button button-blue" onclick="newfolder()">
+                        <i class="icon baseline">
+                            <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10,4L12,6H20A2,2 0 0,1 22,8V18A2,2 0 0,1 20,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10M15,9V12H12V14H15V17H17V14H20V12H17V9H15Z" />
+                            </svg>
+                        </i>
+                        New folder
+                    </button>
+                </h3>
+                <input style="display: none;" type="file" id="files" name="files[]" multiple onchange="upload(this)"/>
+            </div>
+
+            <div class="content">
+                <progress id="upload-progress" min="0" max="100" value="50"style="display: none; width: 100%;"></progress>
+                <table class="pure-table pure-table-striped stretch">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="#" style="text-decoration: none; color: inherit">
+                                    Name
+                                    <i class="icon baseline">                                    
+                                        <svg style="width:1.1em;height:1.1em" viewBox="0 0 24 24">
+                                            <path fill="#000000" d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z" />
+                                        </svg>
+                                    </i>
+                                </a>                            
+                            </th>
+                            <th>
+                                <a href="#" style="text-decoration: none; color: inherit">
+                                    Modified
+                                    <i class="icon baseline">                                    
+                                        <svg style="width:1.1em;height:1.1em" viewBox="0 0 24 24">
+                                            <path fill="#000000" d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z" />
+                                        </svg>
+                                    </i>
+                                </a>                            
+                            </th>
+                            <th>
+                                <a href="#" style="text-decoration: none; color: inherit">
+                                    Size
+                                    <i class="icon baseline">                                    
+                                        <svg style="width:1.1em;height:1.1em" viewBox="0 0 24 24">
+                                            <path fill="#000000" d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z" />
+                                        </svg>
+                                    </i>
+                                </a>                            
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {{if .IsNotTopMost}}
+                        <tr>
+                            <td>
+                                <a href="?p={{$.ParentDir}}" style="text-decoration: none;">..</a>
+                            </td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        {{end}} 
+                        {{range .Directories}}
+                        <tr>
+                            <td>
+                                <a href="?p={{$.DirectoryPath}}%2f{{.Name}}" style="text-decoration: none;">{{.Name}}/</a>
+                            </td>
+                            <td>{{.Modified}}</td>
+                            <td></td>
+                        </tr>
+                        {{end}}
+                        {{range .Files}}
+                        <tr>
+                            <td>
+                                <a href="/getfile?p={{$.DirectoryPath}}%2f{{.Name}}" style="text-decoration: none;">{{.Name}}</a>
+                            </td>
+                            <td>{{.Modified}}</td>
+                            <td>{{.Size}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                <div id="events"></div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+</body>
+
+</html>
