@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 
@@ -112,7 +113,14 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		}
 		defer uploadStream.Close()
 
-		path := filepath.Join(*basePath, dirPath, m.File[i][0].Filename)
+		// Fix path from MISE, because MSIE sends filename with complete local path not only the filename
+		filename := m.File[i][0].Filename
+		lastBackslash := strings.LastIndex(filename, "\\")
+		if lastBackslash != -1 {
+			filename = filename[lastBackslash+1:]
+		}
+
+		path := filepath.Join(*basePath, dirPath, filename)
 		if !isPathValid(path) {
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
@@ -133,7 +141,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Println("Uploaded: " + m.File[i][0].Filename)
+		log.Println("Uploaded: " + path)
 	}
 
 	w.WriteHeader(http.StatusOK)
