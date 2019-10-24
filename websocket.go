@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
+	"path/filepath"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -12,6 +14,11 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+}
+
+type fileEvent struct {
+	EventType string `json:"event_type"`
+	Path      string `json:"path"`
 }
 
 var mutex = &sync.Mutex{}
@@ -25,13 +32,10 @@ func ws(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//log.Println("Websocket client connected")
-
 	closeconn := make(chan bool)
 	events := registerWsClient()
 
 	conn.SetCloseHandler(func(code int, text string) error {
-		//log.Println("Websocket closing")
 		closeconn <- true
 		return nil
 	})
@@ -40,12 +44,18 @@ func ws(w http.ResponseWriter, r *http.Request) {
 	for connectionActive {
 		select {
 		case <-closeconn:
-			//log.Println("Websocket closed")
 			connectionActive = false
 
 		case event := <-events:
-			msg := (*event).Event().String() + ": " + (*event).Path()
-			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+			path, err := filepath.Rel(*basePath, (*event).Path())
+			if err != nil {
+				continue
+			}
+
+			eventMsg := &fileEvent{EventType: (*event).Event().String(), Path: path}
+			eventMsgJSON, _ := json.Marshal(eventMsg)
+
+			if err := conn.WriteMessage(websocket.TextMessage, []byte(eventMsgJSON)); err != nil {
 				log.Println(err)
 				connectionActive = false
 			}

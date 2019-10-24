@@ -52,7 +52,7 @@
         .icon.baseline svg,
         .icon img {
             top: .15em;
-            margin-right: 0.1em; 
+            margin-right: 0.1em;
             position: relative;
         }
 
@@ -62,7 +62,7 @@
             text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
             background: rgb(28, 184, 65);
         }
-        
+
         .button-blue {
             background: rgb(28, 65, 184);
         }
@@ -136,8 +136,11 @@
 
         // Log messages from the server
         ws.onmessage = function (evt) {
+            let events = document.querySelector('#events');
             console.log('Server: ' + evt.data);
-            document.getElementById('events').insertAdjacentHTML('beforeend', '<pre>' + evt.data + '</pre><br/>')
+            data = JSON.parse(evt.data);
+
+            events.insertAdjacentHTML('beforeend', `<span>${data.event_type}: </span><span>${data.path}</span><br>`);
         };
 
         ws.onclose = function (evt) {
@@ -187,38 +190,39 @@
 
             <div class="content">
                 <progress id="upload-progress" min="0" max="100" value="50"style="display: none; width: 100%;"></progress>
+                <div id="events"></div>
                 <table class="pure-table pure-table-striped stretch">
                     <thead>
                         <tr>
                             <th>
                                 <a href="#" style="text-decoration: none; color: inherit">
                                     Name
-                                    <i class="icon baseline">                                    
+                                    <i class="icon baseline">
                                         <svg style="width:1.1em;height:1.1em" viewBox="0 0 24 24">
                                             <path fill="#000000" d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z" />
                                         </svg>
                                     </i>
-                                </a>                            
+                                </a>
                             </th>
                             <th>
                                 <a href="#" style="text-decoration: none; color: inherit">
                                     Modified
-                                    <i class="icon baseline">                                    
+                                    <i class="icon baseline">
                                         <svg style="width:1.1em;height:1.1em" viewBox="0 0 24 24">
                                             <path fill="#000000" d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z" />
                                         </svg>
                                     </i>
-                                </a>                            
+                                </a>
                             </th>
                             <th>
                                 <a href="#" style="text-decoration: none; color: inherit">
                                     Size
-                                    <i class="icon baseline">                                    
+                                    <i class="icon baseline">
                                         <svg style="width:1.1em;height:1.1em" viewBox="0 0 24 24">
                                             <path fill="#000000" d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z" />
                                         </svg>
                                     </i>
-                                </a>                            
+                                </a>
                             </th>
                         </tr>
                     </thead>
@@ -232,7 +236,7 @@
                             <td></td>
                             <td></td>
                         </tr>
-                        {{end}} 
+                        {{end}}
                         {{range .Directories}}
                         <tr>
                             <td>
@@ -253,7 +257,6 @@
                         {{end}}
                     </tbody>
                 </table>
-                <div id="events"></div>
             </div>
         </div>
     </div>
