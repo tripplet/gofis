@@ -8,35 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	assetfs "github.com/elazarl/go-bindata-assetfs"
-
-	"github.com/tdewolff/minify"
-	"github.com/tdewolff/minify/css"
-	"github.com/tdewolff/minify/html"
-	"github.com/tdewolff/minify/js"
-	"github.com/tdewolff/minify/svg"
 )
 
-func rootPageTemplate(res *assetfs.AssetFS) *template.Template {
-	mini := minify.New()
-	mini.AddFunc("text/css", css.Minify)
-	mini.AddFunc("text/html", html.Minify)
-	mini.AddFunc("text/html", html.Minify)
-	mini.AddFunc("image/svg+xml", svg.Minify)
-	mini.AddFunc("text/javascript", js.Minify)
-
-	content, err := res.Asset("static/index.htm")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tmplMinified, err := mini.String("text/html", string(content))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return template.Must(template.New("").Parse(tmplMinified))
+func rootPageTemplate(rootPageTemple string) *template.Template {
+	return template.Must(template.New("").Parse(rootPageTemple))
 }
 
 // getpage handles the request to show the webpage
@@ -66,7 +41,7 @@ func newfolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Creating new folder")
+	log.Println("Recevied request to creat a new folder from:", r.RemoteAddr)
 
 	currentPath := r.FormValue("path")
 	folderName := r.FormValue("foldername")
@@ -98,7 +73,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Receiving upload")
+	log.Println("Receiving upload from:", r.RemoteAddr)
 	m := r.MultipartForm
 
 	dirPath := m.Value["path"][0]
@@ -158,7 +133,7 @@ func getFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Download '%v'", path)
+	log.Printf("Download '%v' from '%s'", path, r.RemoteAddr)
 
 	// Send file always as download
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+filepath.Base(path)+"\"")

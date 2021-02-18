@@ -1,9 +1,11 @@
 package main
 
 import (
+	"embed"
 	"errors"
 	"flag"
 	"html/template"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,11 +13,10 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
-
-	assetfs "github.com/elazarl/go-bindata-assetfs"
-
 	"github.com/rjeczalik/notify"
 )
+
+//go:generate go run gen.go
 
 type file struct {
 	Name     string
@@ -42,6 +43,9 @@ type pageData struct {
 var basePath *string
 var name *string
 var rootPage *template.Template
+
+//go:embed out
+var f embed.FS
 
 func main() {
 	// Parse command line parameters
@@ -72,10 +76,19 @@ func main() {
 	defer notify.Stop(fsEvents)
 	startNotifyWsClients(fsEvents)
 
-	res := &assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo, Prefix: ""}
-	rootPage = rootPageTemplate(res)
+	rr, err := f.ReadFile("out/static/index.htm")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	http.Handle("/static/", http.FileServer(res))
+	rootPage = rootPageTemplate(string(rr))
+
+	subFs, err := fs.Sub(f, "out")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http.Handle("/static/", http.FileServer(http.FS(subFs)))
 	http.HandleFunc("/", getRootPage)
 	http.HandleFunc("/getfile", getFile)
 	http.HandleFunc("/ws", ws)
