@@ -4,11 +4,14 @@ import (
 	"embed"
 	"errors"
 	"flag"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -45,11 +48,11 @@ var name *string
 var rootPage *template.Template
 
 //go:embed out
-var f embed.FS
+var embeddedFS embed.FS
 
 func main() {
 	// Parse command line parameters
-	port := flag.String("p", "80", "Port for http server")
+	port := flag.Int("p", 80, "Port for http server")
 	basePath = flag.String("d", ".", "Directory to be shared")
 	name = flag.String("n", "Shared", "Name of main directory")
 	flag.Parse()
@@ -76,14 +79,9 @@ func main() {
 	defer notify.Stop(fsEvents)
 	startNotifyWsClients(fsEvents)
 
-	rr, err := f.ReadFile("out/static/index.htm")
-	if err != nil {
-		log.Fatal(err)
-	}
+	rootPage = loadRootTemplate()
 
-	rootPage = rootPageTemplate(string(rr))
-
-	subFs, err := fs.Sub(f, "out")
+	subFs, err := fs.Sub(embeddedFS, "out")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -95,8 +93,17 @@ func main() {
 	http.HandleFunc("/upload", upload)
 	http.HandleFunc("/newfolder", newfolder)
 
-	log.Println("Starting server on :" + *port)
-	if err := http.ListenAndServe(":"+*port, nil); err != nil {
+	log.Println("Starting server on Port", *port)
+	portPostfix := ""
+	if *port != 80 {
+		portPostfix = fmt.Sprintf(":%d", *port)
+	}
+
+	for _, name := range getLocalNames() {
+		log.Printf("Access via http://%s%s", name, portPostfix)
+	}
+
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
 		log.Fatalln("Error: Could not create server, quitting.")
 	}
 }
@@ -162,4 +169,50 @@ func listDirectory(path string) (pageData, error) {
 		DirectoryPath: path,
 		ParentDir:     filepath.Dir(path),
 	}, nil
+}
+
+func loadRootTemplate() *template.Template {
+	templateBytes, err := embeddedFS.ReadFile("out/static/index.htm")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return rootPageTemplate(string(templateBytes))
+}
+
+func getLocalNames() []string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	names := []string{hostname}
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				if !v.IP.IsLoopback() && v.IP.To4() != nil {
+					names = append(names, v.IP.String())
+				}
+
+			case *net.IPAddr:
+				if !v.IP.IsLoopback() && v.IP.To4() != nil {
+					names = append(names, v.IP.String())
+				}
+			}
+		}
+	}
+
+	return names
 }
