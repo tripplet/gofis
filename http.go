@@ -136,6 +136,8 @@ func getFile(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Download '%v' from '%s'", path, r.RemoteAddr)
 
 	// Send file always as download
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+filepath.Base(path)+"\"")
+	w.Header().Set("Content-Disposition", "attachment; filename="+strconv.Quote(filepath.Base(path)))
+	w.Header().Set("Content-Type", "application/octet-stream")
+
 	http.ServeFile(w, r, path)
 }
