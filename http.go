@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -41,7 +42,7 @@ func newfolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Recevied request to creat a new folder from:", r.RemoteAddr)
+	log.Println("Received request to creat a new folder from:", r.RemoteAddr)
 
 	currentPath := r.FormValue("path")
 	folderName := r.FormValue("foldername")
@@ -128,7 +129,7 @@ func getFile(w http.ResponseWriter, r *http.Request) {
 	path = filepath.Join(*basePath, path)
 
 	if !isPathValid(path) {
-		log.Println("Acces to path not allowed:" + path)
+		log.Println("Access to path not allowed:" + path)
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
