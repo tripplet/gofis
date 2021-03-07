@@ -4,6 +4,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"fmt"
 	"os"
 	"path"
@@ -45,19 +46,33 @@ func main() {
 			minified = fileContent
 		}
 
-		a := filepath.Join("out", goFile)
+		outFilePath := filepath.Join("out", goFile)
 
-		err = os.MkdirAll(filepath.Dir(a), 0777)
+		err = os.MkdirAll(filepath.Dir(outFilePath), 0777)
 		if err != nil {
 			panic(err)
 		}
 
-		fmt.Println(path.Dir(a))
-		fmt.Println(a)
+		fmt.Println(outFilePath)
 
-		err = os.WriteFile(a, minified, 0666)
+		gzFile, err := os.Create(outFilePath + ".gz")
 		if err != nil {
 			panic(err)
 		}
+		defer gzFile.Close()
+
+		// set up the gzip writer
+		gw, err := gzip.NewWriterLevel(gzFile, gzip.BestCompression)
+		if err != nil {
+			panic(err)
+		}
+		defer gw.Close()
+
+		err = os.WriteFile(outFilePath, minified, 0666)
+		if err != nil {
+			panic(err)
+		}
+
+		gw.Write(minified)
 	}
 }
