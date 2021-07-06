@@ -12,7 +12,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -45,6 +47,7 @@ type pageData struct {
 
 var basePath *string
 var name *string
+var noBrowser *bool
 var rootPage *template.Template
 
 //go:embed out
@@ -55,6 +58,7 @@ func main() {
 	port := flag.Int("p", 80, "Port for http server")
 	basePath = flag.String("d", ".", "Directory to be shared")
 	name = flag.String("n", "Shared", "Name of main directory")
+	noBrowser = flag.Bool("no-browser", false, "Don't open the browser")
 	flag.Parse()
 
 	if *basePath == "." {
@@ -178,6 +182,26 @@ func loadRootTemplate() *template.Template {
 	}
 
 	return rootPageTemplate(string(templateBytes))
+}
+
+func openbrowser(url string) {
+	var err error
+
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func getLocalNames() []string {
