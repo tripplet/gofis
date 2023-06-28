@@ -108,9 +108,16 @@ func main() {
 		log.Printf("Access via http://%s%s", name, portPostfix)
 	}
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
-		log.Fatalln("Error: Could not create server, quitting.")
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		log.Fatalln("Error: Could not listen on " + fmt.Sprintf(":%d", *port))
 	}
+
+	if err := http.Serve(listen, nil); err != nil {
+		log.Fatalln("Error: Could not create server, quitting.")
+		return
+	}
+
 }
 
 // isPathValid checks whether a given path is valid and below the basePath.
