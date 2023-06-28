@@ -80,6 +80,7 @@ func main() {
 	if err := notify.Watch(*basePath+"...", fsEvents, notify.Create, notify.Remove, notify.Rename); err != nil {
 		log.Fatal(err)
 	}
+
 	defer notify.Stop(fsEvents)
 	startNotifyWsClients(fsEvents)
 
